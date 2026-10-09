@@ -386,6 +386,41 @@ async def test_forecast_endpoint_receives_openaq_history():
                     assert len(data["predictions"]) == 24
 
 
+def test_api_forecast_ml_endpoint_seed_pm25_demonstration():
+    """Verify endpoint provides operational multi-step rollout using seed_pm25 without station history."""
+    raw_df = _generate_synthetic_hourly_data(hours=360)
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        train_res = train_and_evaluate_model(
+            raw_df,
+            output_dir=tmp_dir,
+            n_estimators=10,
+            max_depth=4,
+        )
+        with patch.object(settings, "ml_model_enabled", True):
+            with patch.object(settings, "model_path", train_res["model_path"]):
+                # Call endpoint with seed_pm25 and no station_id
+                response = client.get("/api/forecast/ml?seed_pm25=42.0&hours=24")
+                assert response.status_code == 200
+                data = response.json()
+                assert data["status"] == "operational"
+                assert len(data["predictions"]) == 24
+                assert data["predictions"][0]["horizon_hour"] == 1
+                assert all(p["unit"] == "µg/m³" for p in data["predictions"])
+                assert all(p["predicted_pm2_5"] >= 0.0 for p in data["predictions"])
+                assert "Demonstration Baseline" in data["message"] or "seed" in data["message"]
+
+
+def test_api_forecast_ml_endpoint_no_station_no_seed_insufficient():
+    """Verify endpoint returns insufficient_data when model is enabled but neither station nor seed is supplied."""
+    with patch.object(settings, "ml_model_enabled", True):
+        response = client.get("/api/forecast/ml?hours=24")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "insufficient_data"
+        assert len(data["predictions"]) == 0
+        assert "no recent ground observations were provided" in data["message"].lower() or "required" in data["message"].lower()
+
+
 def test_historical_csv_loader():
     """Verify loading and parsing of offline historical observations CSV."""
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".csv", delete=False) as f:

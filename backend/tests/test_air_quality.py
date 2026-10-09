@@ -227,3 +227,81 @@ def test_endpoint_upstream_timeout(mock_fetch):
     body = response.json()
     assert body["detail"]["code"] == "UPSTREAM_TIMEOUT"
     assert body["detail"]["retryable"] is True
+
+
+def test_air_quality_grid_endpoint_validation():
+    """Verify bounds validation on /api/air-quality/grid."""
+    res_lat = client.get("/api/air-quality/grid?latitude=100.0&longitude=80.0")
+    assert res_lat.status_code == 422
+
+    res_rad = client.get("/api/air-quality/grid?latitude=13.0&longitude=80.0&radius_km=0.5")
+    assert res_rad.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_fetch_air_quality_grid_mocked():
+    """Verify grid sampling service parses multi-coordinate response correctly."""
+    from app.services.open_meteo import fetch_air_quality_grid
+
+    mock_batch = [
+        {
+            "latitude": 13.0,
+            "longitude": 80.0,
+            "current": {"us_aqi": 55, "european_aqi": 30, "pm2_5": 14.2, "time": "2026-10-09T17:00"},
+        },
+        {
+            "latitude": 13.1,
+            "longitude": 80.1,
+            "current": {"us_aqi": 75, "european_aqi": 45, "pm2_5": 22.0, "time": "2026-10-09T17:00"},
+        },
+    ]
+
+    class MockTransport(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=mock_batch)
+
+    async with httpx.AsyncClient(transport=MockTransport()) as test_client:
+        res = await fetch_air_quality_grid(
+            latitude=13.0,
+            longitude=80.0,
+            radius_km=15.0,
+            grid_size=2,
+            client=test_client,
+            use_cache=False,
+        )
+        assert res.grid_points_count == 2
+        assert len(res.points) == 2
+        assert res.points[0].us_aqi == 55
+        assert res.points[0].category == "Moderate"
+        assert res.data_type == "atmospheric_model_estimate"
+
+
+def test_geocoding_search_endpoint():
+    """Verify /api/geocoding/search endpoint handles input and validation."""
+    # Min length validation
+    res_short = client.get("/api/geocoding/search?q=a")
+    assert res_short.status_code == 422
+
+    # Query with mock
+    with patch("app.routers.geocoding.search_locations") as mock_search:
+        from app.schemas import GeocodingSearchResponse, GeocodingResultItem
+        mock_search.return_value = GeocodingSearchResponse(
+            query="Chennai",
+            count=1,
+            results=[
+                GeocodingResultItem(
+                    id=123,
+                    name="Chennai",
+                    latitude=13.0827,
+                    longitude=80.2707,
+                    country="India",
+                    country_code="IN",
+                )
+            ],
+        )
+        res = client.get("/api/geocoding/search?q=Chennai")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["count"] == 1
+        assert data["results"][0]["name"] == "Chennai"
+

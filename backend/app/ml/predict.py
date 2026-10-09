@@ -55,6 +55,19 @@ def load_model_and_metadata(
         return None, None
 
     model_p = Path(model_path_str or settings.model_path)
+    if not model_p.is_file():
+        # Fallback if running from within backend/ or workspace root
+        candidates = [
+            Path("models") / model_p.name,
+            Path("backend/models") / model_p.name,
+            Path(__file__).resolve().parent.parent.parent / "models" / model_p.name,
+            Path(__file__).resolve().parent.parent / "models" / model_p.name,
+        ]
+        for cand in candidates:
+            if cand.is_file():
+                model_p = cand
+                break
+
     meta_p = (
         Path(meta_path_str)
         if meta_path_str

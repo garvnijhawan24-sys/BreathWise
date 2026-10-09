@@ -11,6 +11,7 @@ from app.routers.air_quality import router as air_quality_router
 from app.routers.stations import router as stations_router
 from app.routers.forecast_ml import router as forecast_ml_router
 from app.routers.reports import router as reports_router
+from app.routers.geocoding import router as geocoding_router
 from app.ml.predict import load_model_and_metadata
 
 app = FastAPI(
@@ -33,6 +34,7 @@ app.include_router(air_quality_router)
 app.include_router(stations_router)
 app.include_router(forecast_ml_router)
 app.include_router(reports_router)
+app.include_router(geocoding_router)
 
 
 @app.exception_handler(Exception)

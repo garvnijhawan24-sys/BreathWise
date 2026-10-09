@@ -228,3 +228,53 @@ class EnvironmentalReport(BaseModel):
     )
 
 
+# ==========================================
+# Air Quality Spatial Grid Models (Heatmap)
+# ==========================================
+
+class GridSamplePoint(BaseModel):
+    latitude: float
+    longitude: float
+    us_aqi: Optional[float] = None
+    european_aqi: Optional[float] = None
+    pm2_5: Optional[float] = None
+    category: str
+    observed_at: str
+
+
+class AirQualityGridResponse(BaseModel):
+    center_latitude: float
+    center_longitude: float
+    radius_km: float
+    grid_points_count: int
+    points: List[GridSamplePoint] = Field(default_factory=list)
+    primary_metric: Literal["us_aqi"] = "us_aqi"
+    source: str = "Open-Meteo Atmospheric Air Quality Model"
+    data_type: Literal["atmospheric_model_estimate"] = "atmospheric_model_estimate"
+    attribution: str = "Air quality estimates by Open-Meteo.com under CC BY 4.0"
+    retrieved_at: str
+    cached: bool = False
+
+
+# ==========================================
+# Geocoding Models
+# ==========================================
+
+class GeocodingResultItem(BaseModel):
+    id: int
+    name: str
+    latitude: float
+    longitude: float
+    country: Optional[str] = None
+    country_code: Optional[str] = None
+    admin1: Optional[str] = None
+    timezone: Optional[str] = None
+
+
+class GeocodingSearchResponse(BaseModel):
+    query: str
+    count: int
+    results: List[GeocodingResultItem] = Field(default_factory=list)
+
+
+

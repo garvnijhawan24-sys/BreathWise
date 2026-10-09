@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     open_meteo_air_quality_base_url: str = (
         "https://air-quality-api.open-meteo.com/v1/air-quality"
     )
+    open_meteo_geocoding_base_url: str = (
+        "https://geocoding-api.open-meteo.com/v1/search"
+    )
 
     # OpenAQ Base URL (Deferred to Phase 2)
     openaq_base_url: str = "https://api.openaq.org/v3"

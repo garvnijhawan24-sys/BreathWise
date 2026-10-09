@@ -178,4 +178,46 @@ export interface EnvironmentalReport {
   disclaimers: string[];
 }
 
+export interface GridSamplePoint {
+  latitude: number;
+  longitude: number;
+  us_aqi: number | null;
+  european_aqi: number | null;
+  pm2_5: number | null;
+  category: string;
+  observed_at: string;
+}
+
+export interface AirQualityGridResponse {
+  center_latitude: number;
+  center_longitude: number;
+  radius_km: number;
+  grid_points_count: number;
+  points: GridSamplePoint[];
+  primary_metric: 'us_aqi';
+  source: string;
+  data_type: 'atmospheric_model_estimate';
+  attribution: string;
+  retrieved_at: string;
+  cached: boolean;
+}
+
+export interface GeocodingResultItem {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  country?: string | null;
+  country_code?: string | null;
+  admin1?: string | null;
+  timezone?: string | null;
+}
+
+export interface GeocodingSearchResponse {
+  query: string;
+  count: number;
+  results: GeocodingResultItem[];
+}
+
+
 

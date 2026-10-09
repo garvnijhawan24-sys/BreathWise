@@ -147,3 +147,78 @@ def train_and_evaluate_model(
         "metadata_path": str(artifact_meta_file),
         "metadata": metadata,
     }
+
+
+def generate_demonstration_training_data(n_days: int = 45, random_state: int = 42) -> pd.DataFrame:
+    """
+    Generates an hourly time-series dataset with realistic diurnal cycles and autocorrelation
+    for academic demonstration and software integration verification.
+    Clearly labeled in metadata as demonstration data pending validated real-world history.
+    """
+    import numpy as np
+
+    np.random.seed(random_state)
+    n_hours = n_days * 24
+    end_time = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    timestamps = [end_time - pd.Timedelta(hours=n_hours - 1 - i) for i in range(n_hours)]
+
+    # Base concentration with diurnal variation (peak in morning/evening) and AR(1) autocorrelation
+    pm25_vals = []
+    current_val = 35.0
+    for ts in timestamps:
+        hr = ts.hour
+        # Diurnal rush-hour & inversion cycle
+        diurnal_offset = 12.0 * np.sin((hr - 6) / 24.0 * 2.0 * np.pi) + 6.0 * np.cos((hr - 18) / 24.0 * 2.0 * np.pi)
+        noise = np.random.normal(0, 3.5)
+        # AR(1) step: 0.85 persistent + diurnal + noise
+        current_val = 0.82 * current_val + 0.18 * (35.0 + diurnal_offset) + noise
+        current_val = max(5.0, round(current_val, 2))
+        pm25_vals.append(current_val)
+
+    return pd.DataFrame({
+        "timestamp": timestamps,
+        "pm2_5": pm25_vals,
+        "unit": "µg/m³",
+        "sensor_id": 9999,
+    })
+
+
+if __name__ == "__main__":
+    import argparse
+    from app.services.openaq_history import load_historical_observations_from_csv
+
+    parser = argparse.ArgumentParser(description="BreatheWise PM2.5 Random Forest Training CLI")
+    parser.add_argument("--csv", type=str, default=None, help="Path to offline historical observations CSV")
+    parser.add_argument("--demo", action="store_true", help="Train demonstration baseline model for academic verification")
+    parser.add_argument("--output-dir", type=str, default="backend/models", help="Artifact output directory")
+    parser.add_argument("--station-id", type=str, default=None, help="Optional station identifier")
+    args = parser.parse_args()
+
+    if args.csv:
+        print(f"Loading historical observations from {args.csv}...")
+        df_raw = load_historical_observations_from_csv(args.csv)
+        provider_name = f"Offline Ground Station CSV ({args.csv})"
+    elif args.demo:
+        print("Generating 45-day demonstration time-series (for academic integration verification)...")
+        df_raw = generate_demonstration_training_data(n_days=45)
+        provider_name = "Demonstration Baseline (Academic Demonstration Only)"
+    else:
+        print("Error: Specify either --csv <path> or --demo to train a model.")
+        raise SystemExit(1)
+
+    print(f"Executing training pipeline on {len(df_raw)} records...")
+    res = train_and_evaluate_model(
+        df_raw,
+        output_dir=args.output_dir,
+        station_id=args.station_id or ("demo_9999" if args.demo else None),
+        provider=provider_name,
+    )
+    meta = res["metadata"]
+    print("\nTraining completed successfully!")
+    print(f"Model Artifact:    {res['model_path']}")
+    print(f"Metadata Artifact: {res['metadata_path']}")
+    print(f"Model 1-Step MAE:  {meta['metrics']['mae']} µg/m³")
+    print(f"Baseline MAE:      {meta['metrics']['baseline_mae']} µg/m³")
+    print(f"Beats Baseline:    {meta['metrics']['beats_baseline']}")
+    print(f"Model Status:      {meta['status']}")
+
