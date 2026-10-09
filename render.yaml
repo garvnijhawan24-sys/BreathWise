@@ -1,0 +1,32 @@
+# BreatheWise - Render Infrastructure Blueprint
+# Deploys FastAPI backend service on Render
+services:
+  - type: web
+    name: breathewise-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_NAME
+        value: BreatheWise
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        # Update with your custom Vercel domain or allow comma-separated origins
+        value: https://breathewise.vercel.app,http://localhost:5173
+      - key: OPEN_METEO_AIR_QUALITY_BASE_URL
+        value: https://air-quality-api.open-meteo.com/v1/air-quality
+      - key: OPENAQ_BASE_URL
+        value: https://api.openaq.org/v3
+      - key: OPENAQ_API_KEY
+        sync: false # Set securely in Render dashboard
+      - key: ML_MODEL_ENABLED
+        value: "false" # Maintained false until validated historical model is trained
+      - key: MODEL_PATH
+        value: backend/models/air_quality_model.joblib
