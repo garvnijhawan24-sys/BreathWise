@@ -4,9 +4,28 @@ BreatheWise is a dual-source environmental intelligence web platform providing s
 1. **Atmospheric Model Estimates** (Open-Meteo Air Quality API)
 2. **Ground Monitoring Station Observations** (OpenAQ API v3)
 
-> **Current Phase:** Phase 5 (Environmental Reports & Deployment Preparation)  
 > **Integrity Principle:** Never combine model forecasts and physical sensor readings into a single deceptive number. Always preserve station coordinates, distance, original units, provider provenance, and explicit ML status notices.
 
+---
+
+## Quick Start (One-Click Launch)
+
+### On Windows:
+Double-click `start.bat` or run:
+```cmd
+start.bat
+```
+
+### On macOS / Linux:
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+This will automatically create the virtual environment, install backend and frontend dependencies, copy environment templates, and launch both servers:
+- **Frontend Dashboard:** [http://localhost:5173](http://localhost:5173)
+- **FastAPI Documentation:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **Health Check:** [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
 
 ---
 
